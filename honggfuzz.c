@@ -189,8 +189,10 @@ static void printSummary(honggfuzz_t* hfuzz) {
     if (elapsed_sec) {
         exec_per_sec = hfuzz->cnts.mutationsCnt / elapsed_sec;
     }
-    LOG_I("Summary iterations:%zu time:%" PRIu64 " speed:%" PRIu64, hfuzz->cnts.mutationsCnt,
-        elapsed_sec, exec_per_sec);
+    LOG_I("Summary iterations:%zu time:%" PRIu64 " speed:%" PRIu64 " "
+          "crashes_count:%zu timeout_count:%zu",
+          hfuzz->cnts.mutationsCnt, elapsed_sec, exec_per_sec,
+          hfuzz->cnts.crashesCnt, hfuzz->cnts.timeoutedCnt);
 }
 
 static void pingThreads(honggfuzz_t* hfuzz) {
