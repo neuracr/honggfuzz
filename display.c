@@ -255,6 +255,14 @@ static void display_displayLocked(honggfuzz_t* hfuzz) {
         display_put(" pc: " ESC_BOLD "%" _HF_NONMON_SEP PRIu64 ESC_RESET, softCntPc);
         display_put(" cmp: " ESC_BOLD "%" _HF_NONMON_SEP PRIu64 ESC_RESET, softCntCmp);
     }
+    size_t maxRss = 0;
+    for (uint32_t i = 0 ; i < ATOMIC_GET(hfuzz->threads.threadsActiveCnt) ; i++){
+        size_t currRss = ATOMIC_GET(hfuzz->feedback.feedbackMap->maxRss[i]);
+        if (maxRss < currRss){
+            maxRss = currRss;
+        }
+    }
+    display_put(" maxRss: " ESC_BOLD "%" _HF_NONMON_SEP PRIu64 ESC_RESET, maxRss);
 
     display_put("\n---------------------------------- [ " ESC_BOLD "LOGS" ESC_RESET
                 " ] ------------------/ " ESC_BOLD "%s %s " ESC_RESET "/-",

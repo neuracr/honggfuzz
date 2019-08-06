@@ -13,6 +13,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <sys/resource.h>
+#include <pthread.h> 
 
 #include "honggfuzz.h"
 #include "libhfcommon/common.h"
@@ -39,6 +41,31 @@ const char* const LIBHFUZZ_module_instrument = "LIBHFUZZ_module_instrument";
 static feedback_t bbMapFb;
 feedback_t* feedback = &bbMapFb;
 uint32_t my_thread_no = 0;
+
+//deal with several arch ?
+//code taken from libfuzzer
+size_t GetPeakRssMb() {
+  struct rusage usage;
+  if (getrusage(RUSAGE_SELF, &usage))
+    return 0;
+  if (_HF_ARCH_LINUX) {
+    // ru_maxrss is in KiB
+    return usage.ru_maxrss;// >> 10;
+  }
+  return 0;
+}
+
+static void RssThread(){
+    size_t Peak = 0;
+    while (true){
+        usleep(1000000);
+        Peak = GetPeakRssMb();
+        //LOG_I("Rss: %zu, pid %d", Peak, getpid());
+        if (Peak > ATOMIC_GET(feedback->maxRss[my_thread_no])){
+            ATOMIC_SET(feedback->maxRss[my_thread_no], Peak);
+        }
+    }
+}
 
 static void initializeInstrument(void) {
     if (fcntl(_HF_LOG_FD, F_GETFD) != -1) {
@@ -315,6 +342,10 @@ ATTRIBUTE_X86_REQUIRE_SSE42 void __sanitizer_cov_trace_pc_guard_init(
     if (ATOMIC_GET(feedback->guardNb) < n - 1) {
         ATOMIC_SET(feedback->guardNb, n - 1);
     }
+
+    /* start a thread to monitor maxRss */
+    pthread_t rssMonitoringThread;
+    pthread_create(&rssMonitoringThread, NULL, (void*) &RssThread, NULL);
 }
 
 ATTRIBUTE_X86_REQUIRE_SSE42 void __sanitizer_cov_trace_pc_guard(uint32_t* guard) {
